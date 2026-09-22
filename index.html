@@ -77,6 +77,16 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 #mobile-toggle{background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:6px;margin-right:8px}
 #mobile-toggle:hover{background:var(--hover)}
 #sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9}
+.page-item.dragging{opacity:.4}
+.page-item.drag-over{border-top:2px solid var(--accent2)}
+.pin-btn{background:none;border:none;color:var(--text2);cursor:pointer;width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .12s;flex-shrink:0}
+.pin-btn:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.pin-btn.pinned{color:var(--accent2)}
+#editor pre{background:#1a1a1e;border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin:8px 0;overflow-x:auto;font-size:13px;line-height:1.5}
+#editor code{font-family:'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;background:#1a1a1e;padding:2px 5px;border-radius:4px;color:#e4e4e7}
+#editor pre code{background:none;padding:0;border-radius:0}
+.drop-overlay{position:absolute;inset:0;background:rgba(82,82,82,.15);border:2px dashed var(--accent2);border-radius:8px;display:none;align-items:center;justify-content:center;z-index:5;pointer-events:none;font-size:14px;color:var(--text2)}
+.drop-overlay.visible{display:flex}
 </style>
 </head>
 <body>
@@ -109,13 +119,16 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
       <div class="toolbar-sep"></div>
       <button class="toolbar-btn" onclick="execCmd('createLink',prompt('Enter URL:'))" title="Insert link"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.5 9.5a3.5 3.5 0 0 0 5 0l2-2a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M9.5 6.5a3.5 3.5 0 0 0-5 0l-2 2a3.5 3.5 0 0 0 5 5l1-1"/></svg></button>
       <button class="toolbar-btn" onclick="insertHR()" title="Horizontal rule"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="8" x2="14" y2="8"/></svg></button>
+      <button class="toolbar-btn" onclick="insertCode()" title="Code block"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 4 1 8 5 12"/><polyline points="11 4 15 8 11 12"/><line x1="9" y1="2" x2="7" y2="14"/></svg></button>
       <button id="copy-btn" class="toolbar-btn" onclick="copyNote()" title="Copy note"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 0 1 2 9.5v-7A1.5 1.5 0 0 1 3.5 1h7A1.5 1.5 0 0 1 12 2.5V5"/></svg><span id="copy-text">Copy</span></button>
+      <button class="toolbar-btn" onclick="exportNote()" title="Export as Markdown"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12V4a1 1 0 0 1 1-1h6l4 4v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/><path d="M9 3v4h4"/></svg></button>
     </div>
     <div id="empty-state">
       <div class="icon">&#128221;</div>
       <p>Create a new note to get started</p>
     </div>
     <div id="editor" contenteditable="true" style="display:none" data-placeholder="Start typing or paste anything..."></div>
+    <div class="drop-overlay" id="drop-overlay">Drop image here</div>
     <div id="word-count" style="display:none">
       <span id="char-count">0 characters</span>
       <span id="note-date"></span>
@@ -127,9 +140,11 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 <script>
 let pages=[];
 let activePageId=null;
+let dragSrcId=null;
 
 function load(){
   try{pages=JSON.parse(localStorage.getItem('notes_pages'))||[]}catch(e){pages=[]}
+  pages.forEach(p=>{if(p.pinned===undefined)p.pinned=false});
   const sb=document.getElementById('sidebar');
   const sidebarState=localStorage.getItem('notes_sidebar');
   if(window.innerWidth>768){
@@ -141,8 +156,22 @@ function save(){localStorage.setItem('notes_pages',JSON.stringify(pages))}
 function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
 function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
 
+function timeAgo(ts){
+  const s=Math.floor((Date.now()-ts)/1000);
+  if(s<60)return 'just now';
+  const m=Math.floor(s/60);
+  if(m<60)return m+'m ago';
+  const h=Math.floor(m/60);
+  if(h<24)return h+'h ago';
+  const d=Math.floor(h/24);
+  if(d<30)return d+'d ago';
+  const mo=Math.floor(d/30);
+  if(mo<12)return mo+'mo ago';
+  return Math.floor(mo/12)+'y ago';
+}
+
 function createPage(first){
-  const page={id:genId(),title:'Untitled',content:'',created:Date.now(),updated:Date.now()};
+  const page={id:genId(),title:'Untitled',content:'',created:Date.now(),updated:Date.now(),pinned:false};
   pages.unshift(page);
   save();renderPages();selectPage(page.id);
   if(!first)toast('New note created');
@@ -153,6 +182,14 @@ function deletePage(id,e){
   if(pages.length<=1){toast('Cannot delete last note');return}
   pages=pages.filter(p=>p.id!==id);
   if(activePageId===id)selectPage(pages[0].id);
+  save();renderPages();
+}
+
+function togglePin(id,e){
+  e.stopPropagation();
+  const page=pages.find(p=>p.id===id);
+  if(!page)return;
+  page.pinned=!page.pinned;
   save();renderPages();
 }
 
@@ -173,7 +210,7 @@ function selectPage(id){
   const sel=window.getSelection();
   sel.removeAllRanges();
   sel.addRange(range);
-  document.getElementById('note-date').textContent=new Date(page.updated).toLocaleDateString();
+  document.getElementById('note-date').textContent=timeAgo(page.updated);
   updateCount();
   renderPages();
   if(window.innerWidth<=768)toggleSidebar();
@@ -183,8 +220,12 @@ function renderPages(){
   const q=(document.getElementById('search-input').value||'').toLowerCase();
   const list=document.getElementById('pages-list');
   const filtered=pages.filter(p=>p.title.toLowerCase().includes(q)||p.content.toLowerCase().includes(q));
-  list.innerHTML=filtered.map(p=>`
-    <div class="page-item ${p.id===activePageId?'active':''}" onclick="selectPage('${p.id}')">
+  const pinned=filtered.filter(p=>p.pinned);
+  const unpinned=filtered.filter(p=>!p.pinned);
+  const sorted=[...pinned,...unpinned];
+  list.innerHTML=sorted.map(p=>`
+    <div class="page-item ${p.id===activePageId?'active':''}" draggable="true" data-id="${p.id}" onclick="selectPage('${p.id}')" ondragstart="onDragStart(event)" ondragover="onDragOver(event)" ondragleave="onDragLeave(event)" ondrop="onDrop(event)">
+      <button class="pin-btn ${p.pinned?'pinned':''}" onclick="togglePin('${p.id}',event)" title="${p.pinned?'Unpin':'Pin to top'}"><svg width="12" height="12" viewBox="0 0 16 16" fill="${p.pinned?'currentColor':'none'}" stroke="currentColor" stroke-width="1.5"><path d="M10 2L6 6l-3-1-2 2 3 3-4 4h3l4-4 3 3 2-2-1-3 4-4z"/></svg></button>
       <span class="page-title">${esc(p.title||'Untitled')}</span>
       <div class="page-actions">
         <button class="page-action-btn" onclick="renamePage('${p.id}',event)" title="Rename">&#9998;</button>
@@ -192,6 +233,31 @@ function renderPages(){
       </div>
     </div>
   `).join('');
+}
+
+function onDragStart(e){
+  dragSrcId=e.currentTarget.dataset.id;
+  e.currentTarget.classList.add('dragging');
+  e.dataTransfer.effectAllowed='move';
+}
+function onDragOver(e){
+  e.preventDefault();
+  e.dataTransfer.dropEffect='move';
+  e.currentTarget.classList.add('drag-over');
+}
+function onDragLeave(e){e.currentTarget.classList.remove('drag-over')}
+function onDrop(e){
+  e.preventDefault();
+  e.currentTarget.classList.remove('drag-over');
+  const targetId=e.currentTarget.dataset.id;
+  if(!dragSrcId||dragSrcId===targetId)return;
+  const srcIdx=pages.findIndex(p=>p.id===dragSrcId);
+  const tgtIdx=pages.findIndex(p=>p.id===targetId);
+  if(srcIdx<0||tgtIdx<0)return;
+  const [moved]=pages.splice(srcIdx,1);
+  pages.splice(tgtIdx,0,moved);
+  save();renderPages();
+  dragSrcId=null;
 }
 
 function renamePage(id,e){
@@ -211,6 +277,29 @@ function execCmd(cmd,val){
 
 function insertHR(){document.execCommand('insertHorizontalRule');saveContent()}
 
+function insertCode(){
+  const sel=window.getSelection();
+  if(!sel.rangeCount)return;
+  const range=sel.getRangeAt(0);
+  const selected=range.toString();
+  if(selected){
+    const pre=document.createElement('pre');
+    const code=document.createElement('code');
+    code.textContent=selected;
+    pre.appendChild(code);
+    range.deleteContents();
+    range.insertNode(pre);
+    const r2=document.createRange();
+    r2.setStartAfter(pre);
+    r2.collapse(true);
+    sel.removeAllRanges();
+    sel.addRange(r2);
+  }else{
+    document.execCommand('insertHTML',false,'<pre><code></code></pre>');
+  }
+  saveContent();
+}
+
 function copyNote(){
   const editor=document.getElementById('editor');
   const txt=editor.innerText||'';
@@ -220,6 +309,21 @@ function copyNote(){
     btn.textContent='Copied!';
     setTimeout(()=>btn.textContent='Copy',1500);
   }).catch(()=>toast('Failed to copy'));
+}
+
+function exportNote(){
+  const page=pages.find(p=>p.id===activePageId);
+  if(!page)return;
+  const editor=document.getElementById('editor');
+  let md=editor.innerText||'';
+  md=md.replace(/\u00a0/g,' ');
+  const blob=new Blob([md],{type:'text/markdown'});
+  const a=document.createElement('a');
+  a.href=URL.createObjectURL(blob);
+  a.download=(page.title||'note').replace(/[^a-z0-9]/gi,'_')+'.md';
+  a.click();
+  URL.revokeObjectURL(a.href);
+  toast('Exported as Markdown');
 }
 
 function saveContent(){
@@ -232,7 +336,7 @@ function saveContent(){
   page.content=editor.innerHTML;
   page.updated=Date.now();
   save();renderPages();updateCount();
-  document.getElementById('note-date').textContent=new Date(page.updated).toLocaleDateString();
+  document.getElementById('note-date').textContent=timeAgo(page.updated);
 }
 
 function updateCount(){
@@ -332,23 +436,50 @@ function stopResize(){
   saveContent();
 }
 
+function insertImageFile(file){
+  if(!file||!file.type.startsWith('image/'))return;
+  const reader=new FileReader();
+  reader.onload=function(ev){
+    const img='<img src="'+ev.target.result+'" alt="dropped image">';
+    document.execCommand('insertHTML',false,img);
+    saveContent();
+    toast('Image added — click to resize');
+  };
+  reader.readAsDataURL(file);
+}
+
 function handlePaste(e){
   const items=e.clipboardData&&e.clipboardData.items;
   if(!items)return;
   for(let i=0;i<items.length;i++){
     if(items[i].type.indexOf('image')!==-1){
       e.preventDefault();
-      const file=items[i].getAsFile();
-      const reader=new FileReader();
-      reader.onload=function(ev){
-        const img='<img src="'+ev.target.result+'" alt="pasted image">';
-        document.execCommand('insertHTML',false,img);
-        saveContent();
-        toast('Image pasted — click to resize');
-      };
-      reader.readAsDataURL(file);
+      insertImageFile(items[i].getAsFile());
       return;
     }
+  }
+}
+
+function handleDrop(e){
+  e.preventDefault();
+  document.getElementById('drop-overlay').classList.remove('visible');
+  const files=e.dataTransfer&&e.dataTransfer.files;
+  if(!files)return;
+  for(let i=0;i<files.length;i++){
+    if(files[i].type.startsWith('image/'))insertImageFile(files[i]);
+  }
+}
+
+function handleDragOver(e){
+  e.preventDefault();
+  if(e.dataTransfer&&e.dataTransfer.types.indexOf('Files')!==-1){
+    document.getElementById('drop-overlay').classList.add('visible');
+  }
+}
+
+function handleDragLeave(e){
+  if(!document.getElementById('editor-area').contains(e.relatedTarget)){
+    document.getElementById('drop-overlay').classList.remove('visible');
   }
 }
 
@@ -367,8 +498,12 @@ function toggleSidebar(){
 document.addEventListener('DOMContentLoaded',()=>{
   load();
   const editor=document.getElementById('editor');
+  const editorArea=document.getElementById('editor-area');
   editor.addEventListener('input',saveContent);
   editor.addEventListener('paste',handlePaste);
+  editor.addEventListener('drop',handleDrop);
+  editorArea.addEventListener('dragover',handleDragOver);
+  editorArea.addEventListener('dragleave',handleDragLeave);
   editor.addEventListener('mousedown',e=>{
     if(e.target.tagName==='IMG'&&editor.contains(e.target)){
       e.preventDefault();
@@ -410,6 +545,11 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
   window.addEventListener('scroll',positionOverlay,true);
   window.addEventListener('resize',positionOverlay);
+  setInterval(()=>{
+    const el=document.getElementById('note-date');
+    const page=pages.find(p=>p.id===activePageId);
+    if(el&&page)el.textContent=timeAgo(page.updated);
+  },30000);
 });
 </script>
 </body>
