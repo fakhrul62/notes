@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Note</title>
+<link rel="icon" type="image/svg+xml" href="favicon.svg">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#0e0e10;--sidebar:#18181b;--editor:#111113;--accent:#525252;--accent2:#737373;--text:#d4d4d8;--text2:#71717a;--border:#27272a;--hover:#222225;--danger:#dc2626}
+html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text)}
+#app{display:flex;height:100vh}
+
+#sidebar{width:260px;min-width:260px;background:var(--sidebar);display:flex;flex-direction:column;border-right:1px solid var(--border);overflow:hidden;transition:width .2s,min-width .2s}
+#sidebar.collapsed{width:0;min-width:0;border-right:none}
+#sidebar-header{padding:16px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+#sidebar-header h2{font-size:14px;font-weight:600;color:var(--text2);text-transform:uppercase;letter-spacing:.5px}
+#new-page-btn{background:var(--accent);border:none;color:#fff;width:28px;height:28px;border-radius:6px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center;transition:background .15s}
+#new-page-btn:hover{background:var(--accent2)}
+#pages-list{flex:1;overflow-y:auto;padding:8px}
+#pages-list::-webkit-scrollbar{width:4px}
+#pages-list::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.page-item{padding:10px 12px;border-radius:8px;cursor:pointer;display:flex;align-items:center;justify-content:space-between;transition:background .12s;margin-bottom:2px}
+.page-item:hover{background:var(--hover)}
+.page-item.active{background:var(--accent);color:#fff}
+.page-item .page-title{font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;flex:1;outline:none;border:none;background:none;color:inherit}
+.page-item .page-actions{display:flex;gap:4px;opacity:0;transition:opacity .12s}
+.page-item:hover .page-actions,.page-item.active .page-actions{opacity:1}
+.page-action-btn{background:none;border:none;color:var(--text2);cursor:pointer;width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .12s}
+.page-action-btn:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.page-action-btn.delete:hover{color:var(--danger)}
+#editor-area{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--editor)}
+#editor-toolbar{padding:12px 24px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+.toolbar-btn{background:none;border:none;color:var(--text2);cursor:pointer;padding:6px 10px;border-radius:6px;font-size:13px;transition:all .12s;display:flex;align-items:center;gap:4px}
+.toolbar-btn:hover{background:var(--hover);color:var(--text)}
+.toolbar-btn.active{color:var(--accent2)}
+.toolbar-sep{width:1px;height:16px;background:var(--border)}
+#editor{flex:1;padding:40px 60px 100px;overflow-y:auto;font-size:15px;line-height:1.8;outline:none;min-height:100%}
+#editor::-webkit-scrollbar{width:6px}
+#editor::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+#editor:empty:before{content:attr(data-placeholder);color:var(--text2);pointer-events:none}
+#editor img{max-width:100%;border-radius:8px;margin:8px 0;cursor:pointer;transition:outline .1s}
+#editor img.selected{outline:2px solid var(--accent);outline-offset:2px}
+.img-resize-handle{position:absolute;width:10px;height:10px;background:var(--accent);border:2px solid #fff;border-radius:50%;z-index:10;pointer-events:all}
+.img-resize-overlay{position:absolute;pointer-events:none;z-index:9}
+.img-resize-overlay.active{pointer-events:all}
+.handle-tl{top:-5px;left:-5px;cursor:nwse-resize}
+.handle-tc{top:-5px;left:50%;margin-left:-5px;cursor:ns-resize}
+.handle-tr{top:-5px;right:-5px;cursor:nesw-resize}
+.handle-ml{top:50%;margin-top:-5px;left:-5px;cursor:ew-resize}
+.handle-mr{top:50%;margin-top:-5px;right:-5px;cursor:ew-resize}
+.handle-bl{bottom:-5px;left:-5px;cursor:nesw-resize}
+.handle-bc{bottom:-5px;left:50%;margin-left:-5px;cursor:ns-resize}
+.handle-br{bottom:-5px;right:-5px;cursor:nwse-resize}
+.img-size-label{position:absolute;bottom:-22px;left:50%;transform:translateX(-50%);background:#000;color:#fff;font-size:10px;padding:2px 6px;border-radius:4px;white-space:nowrap;pointer-events:none}
+#editor h1{font-size:28px;font-weight:700;margin:8px 0}
+#editor h2{font-size:22px;font-weight:600;margin:6px 0}
+#editor h3{font-size:18px;font-weight:600;margin:4px 0}
+#editor blockquote{border-left:3px solid var(--accent);padding-left:16px;color:var(--text2);margin:8px 0}
+#editor ul,#editor ol{padding-left:24px;margin:8px 0}
+#editor a{color:var(--accent2)}
+#editor hr{border:none;border-top:1px solid var(--border);margin:16px 0}
+#word-count{padding:10px 24px;border-top:1px solid var(--border);font-size:12px;color:var(--text2);display:flex;justify-content:space-between}
+#empty-state{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;color:var(--text2)}
+#empty-state .icon{font-size:48px;margin-bottom:16px;opacity:.3}
+#empty-state p{font-size:14px}
+#toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:var(--accent);color:#fff;padding:10px 20px;border-radius:8px;font-size:13px;transition:transform .3s ease;pointer-events:none;z-index:999}
+#toast.show{transform:translateX(-50%) translateY(0)}
+.search-box{padding:8px 12px;border-bottom:1px solid var(--border)}
+#search-input{width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);padding:8px 10px;border-radius:6px;font-size:12px;outline:none;transition:border-color .15s}
+#search-input:focus{border-color:var(--accent)}
+#search-input::placeholder{color:var(--text2)}
+@media(max-width:768px){#sidebar{position:fixed;z-index:10;height:100%;width:260px;min-width:260px;transform:translateX(-100%);transition:transform .25s}#sidebar.open{transform:translateX(0)}#sidebar.collapsed{width:260px;min-width:260px}#mobile-toggle{display:flex!important}#editor{padding:24px 20px}#editor-toolbar{padding:10px 16px}}
+#mobile-toggle{background:none;border:none;color:var(--text);font-size:20px;cursor:pointer;padding:4px 8px;border-radius:6px;margin-right:8px}
+#mobile-toggle:hover{background:var(--hover)}
+#sidebar-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:9}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="sidebar-overlay" onclick="toggleSidebar()"></div>
+  <div id="sidebar">
+    <div id="sidebar-header">
+      <h2>Notes</h2>
+      <button id="new-page-btn" onclick="createPage()" title="New page">+</button>
+    </div>
+    <div class="search-box">
+      <input type="text" id="search-input" placeholder="Search notes..." oninput="renderPages()">
+    </div>
+    <div id="pages-list"></div>
+  </div>
+  <div id="editor-area">
+    <div id="editor-toolbar">
+      <button id="mobile-toggle" onclick="toggleSidebar()">&#9776;</button>
+      <button class="toolbar-btn" onclick="execCmd('bold')" title="Bold"><b>B</b></button>
+      <button class="toolbar-btn" onclick="execCmd('italic')" title="Italic"><i>I</i></button>
+      <button class="toolbar-btn" onclick="execCmd('underline')" title="Underline"><u>U</u></button>
+      <div class="toolbar-sep"></div>
+      <button class="toolbar-btn" onclick="execCmd('formatBlock','h1')" title="Heading 1">H1</button>
+      <button class="toolbar-btn" onclick="execCmd('formatBlock','h2')" title="Heading 2">H2</button>
+      <button class="toolbar-btn" onclick="execCmd('formatBlock','h3')" title="Heading 3">H3</button>
+      <div class="toolbar-sep"></div>
+      <button class="toolbar-btn" onclick="execCmd('insertUnorderedList')" title="Bullet list">&#8226; List</button>
+      <button class="toolbar-btn" onclick="execCmd('insertOrderedList')" title="Numbered list">1. List</button>
+      <button class="toolbar-btn" onclick="execCmd('formatBlock','blockquote')" title="Quote">" Quote</button>
+      <div class="toolbar-sep"></div>
+      <button class="toolbar-btn" onclick="execCmd('createLink',prompt('Enter URL:'))" title="Insert link">Link</button>
+      <button class="toolbar-btn" onclick="insertHR()" title="Horizontal rule">---</button>
+    </div>
+    <div id="empty-state">
+      <div class="icon">&#128221;</div>
+      <p>Create a new note to get started</p>
+    </div>
+    <div id="editor" contenteditable="true" style="display:none" data-placeholder="Start typing or paste anything..."></div>
+    <div id="word-count" style="display:none">
+      <span id="char-count">0 characters</span>
+      <span id="note-date"></span>
+    </div>
+  </div>
+</div>
+<div id="toast"></div>
+
+<script>
+let pages=[];
+let activePageId=null;
+
+function load(){
+  try{pages=JSON.parse(localStorage.getItem('notes_pages'))||[]}catch(e){pages=[]}
+  const sb=document.getElementById('sidebar');
+  const sidebarState=localStorage.getItem('notes_sidebar');
+  if(window.innerWidth>768){
+    if(sidebarState!=='open')sb.classList.add('collapsed');
+  }
+  if(!pages.length)createPage(true);else{renderPages();selectPage(pages[0].id)}
+}
+function save(){localStorage.setItem('notes_pages',JSON.stringify(pages))}
+function genId(){return Date.now().toString(36)+Math.random().toString(36).slice(2,8)}
+function toast(msg){const t=document.getElementById('toast');t.textContent=msg;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2000)}
+
+function createPage(first){
+  const page={id:genId(),title:'Untitled',content:'',created:Date.now(),updated:Date.now()};
+  pages.unshift(page);
+  save();renderPages();selectPage(page.id);
+  if(!first)toast('New note created');
+}
+
+function deletePage(id,e){
+  e.stopPropagation();
+  if(pages.length<=1){toast('Cannot delete last note');return}
+  pages=pages.filter(p=>p.id!==id);
+  if(activePageId===id)selectPage(pages[0].id);
+  save();renderPages();
+}
+
+function selectPage(id){
+  activePageId=id;
+  deselectImg();
+  const page=pages.find(p=>p.id===id);
+  if(!page)return;
+  document.getElementById('empty-state').style.display='none';
+  document.getElementById('editor').style.display='block';
+  document.getElementById('word-count').style.display='flex';
+  document.getElementById('editor').innerHTML=page.content;
+  document.getElementById('note-date').textContent=new Date(page.updated).toLocaleDateString();
+  updateCount();
+  renderPages();
+  if(window.innerWidth<=768)toggleSidebar();
+}
+
+function renderPages(){
+  const q=(document.getElementById('search-input').value||'').toLowerCase();
+  const list=document.getElementById('pages-list');
+  const filtered=pages.filter(p=>p.title.toLowerCase().includes(q)||p.content.toLowerCase().includes(q));
+  list.innerHTML=filtered.map(p=>`
+    <div class="page-item ${p.id===activePageId?'active':''}" onclick="selectPage('${p.id}')">
+      <span class="page-title">${esc(p.title||'Untitled')}</span>
+      <div class="page-actions">
+        <button class="page-action-btn" onclick="renamePage('${p.id}',event)" title="Rename">&#9998;</button>
+        <button class="page-action-btn delete" onclick="deletePage('${p.id}',event)" title="Delete">&#10005;</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function renamePage(id,e){
+  e.stopPropagation();
+  const page=pages.find(p=>p.id===id);
+  const name=prompt('Rename note:',page.title);
+  if(name!==null&&name.trim()){page.title=name.trim();save();renderPages()}
+}
+
+function esc(s){const d=document.createElement('div');d.textContent=s;return d.innerHTML}
+
+function execCmd(cmd,val){
+  document.execCommand(cmd,false,val||null);
+  document.getElementById('editor').focus();
+  saveContent();
+}
+
+function insertHR(){document.execCommand('insertHorizontalRule');saveContent()}
+
+function saveContent(){
+  if(!activePageId)return;
+  const page=pages.find(p=>p.id===activePageId);
+  if(!page)return;
+  const editor=document.getElementById('editor');
+  const txt=editor.innerText.trim();
+  page.title=txt?txt.split('\n')[0].slice(0,60):'Untitled';
+  page.content=editor.innerHTML;
+  page.updated=Date.now();
+  save();renderPages();updateCount();
+  document.getElementById('note-date').textContent=new Date(page.updated).toLocaleDateString();
+}
+
+function updateCount(){
+  const editor=document.getElementById('editor');
+  const txt=editor.innerText||'';
+  const chars=txt.length;
+  const words=txt.trim()?txt.trim().split(/\s+/).length:0;
+  document.getElementById('char-count').textContent=`${words} words · ${chars} characters`;
+}
+
+let selectedImg=null;
+let imgOverlay=null;
+let resizeState=null;
+
+function createImgOverlay(){
+  if(imgOverlay)return;
+  imgOverlay=document.createElement('div');
+  imgOverlay.className='img-resize-overlay';
+  const handles=['tl','tc','tr','ml','mr','bl','bc','br'];
+  handles.forEach(h=>{
+    const el=document.createElement('div');
+    el.className='img-resize-handle handle-'+h;
+    el.dataset.handle=h;
+    imgOverlay.appendChild(el);
+  });
+  const label=document.createElement('div');
+  label.className='img-size-label';
+  label.id='img-size-label';
+  imgOverlay.appendChild(label);
+  document.body.appendChild(imgOverlay);
+
+  imgOverlay.addEventListener('mousedown',e=>{
+    const handle=e.target.dataset.handle;
+    if(!handle||!selectedImg)return;
+    e.preventDefault();
+    e.stopPropagation();
+    const r=selectedImg.getBoundingClientRect();
+    resizeState={handle,startX:e.clientX,startY:e.clientY,startW:r.width,startH:r.height,aspect:r.width/r.height};
+    document.addEventListener('mousemove',doResize);
+    document.addEventListener('mouseup',stopResize);
+  });
+}
+
+function selectImg(img){
+  deselectImg();
+  selectedImg=img;
+  img.classList.add('selected');
+  createImgOverlay();
+  imgOverlay.classList.add('active');
+  positionOverlay();
+}
+
+function deselectImg(){
+  if(selectedImg){selectedImg.classList.remove('selected');selectedImg=null}
+  if(imgOverlay){imgOverlay.remove();imgOverlay=null}
+}
+
+function positionOverlay(){
+  if(!selectedImg||!imgOverlay||!selectedImg.parentNode)return;
+  const r=selectedImg.getBoundingClientRect();
+  imgOverlay.style.position='fixed';
+  imgOverlay.style.left=(r.left-5)+'px';
+  imgOverlay.style.top=(r.top-5)+'px';
+  imgOverlay.style.width=(r.width+10)+'px';
+  imgOverlay.style.height=(r.height+10)+'px';
+  const label=document.getElementById('img-size-label');
+  if(label)label.textContent=Math.round(r.width)+' × '+Math.round(r.height);
+}
+
+function doResize(e){
+  if(!resizeState||!selectedImg)return;
+  const dx=e.clientX-resizeState.startX;
+  const dy=e.clientY-resizeState.startY;
+  let nw=resizeState.startW;
+  let nh=resizeState.startH;
+  const h=resizeState.handle;
+  if(h.includes('r'))nw=resizeState.startW+dx;
+  if(h.includes('l'))nw=resizeState.startW-dx;
+  if(h.includes('b'))nh=resizeState.startH+dy;
+  if(h.includes('t'))nh=resizeState.startH-dy;
+  if(h==='tc'||h==='bc')nw=nh*resizeState.aspect;
+  if(h==='ml'||h==='mr')nh=nw/resizeState.aspect;
+  if(h==='tl'||h==='tr'||h==='bl'||h==='br'){
+    if(Math.abs(dx)>Math.abs(dy))nh=nw/resizeState.aspect;else nw=nh*resizeState.aspect;
+  }
+  nw=Math.max(40,nw);
+  nh=Math.max(40,nh);
+  selectedImg.style.width=nw+'px';
+  selectedImg.style.height=nh+'px';
+  positionOverlay();
+}
+
+function stopResize(){
+  resizeState=null;
+  document.removeEventListener('mousemove',doResize);
+  document.removeEventListener('mouseup',stopResize);
+  saveContent();
+}
+
+function handlePaste(e){
+  const items=e.clipboardData&&e.clipboardData.items;
+  if(!items)return;
+  for(let i=0;i<items.length;i++){
+    if(items[i].type.indexOf('image')!==-1){
+      e.preventDefault();
+      const file=items[i].getAsFile();
+      const reader=new FileReader();
+      reader.onload=function(ev){
+        const img='<img src="'+ev.target.result+'" alt="pasted image">';
+        document.execCommand('insertHTML',false,img);
+        saveContent();
+        toast('Image pasted — click to resize');
+      };
+      reader.readAsDataURL(file);
+      return;
+    }
+  }
+}
+
+function toggleSidebar(){
+  const sb=document.getElementById('sidebar');
+  if(window.innerWidth<=768){
+    sb.classList.toggle('open');
+    document.getElementById('sidebar-overlay').style.display=
+      sb.classList.contains('open')?'block':'none';
+  }else{
+    sb.classList.toggle('collapsed');
+    localStorage.setItem('notes_sidebar',sb.classList.contains('collapsed')?'collapsed':'open');
+  }
+}
+
+document.addEventListener('DOMContentLoaded',()=>{
+  load();
+  const editor=document.getElementById('editor');
+  editor.addEventListener('input',saveContent);
+  editor.addEventListener('paste',handlePaste);
+  editor.addEventListener('mousedown',e=>{
+    if(e.target.tagName==='IMG'&&editor.contains(e.target)){
+      e.preventDefault();
+      selectImg(e.target);
+    }
+  });
+  document.addEventListener('mousedown',e=>{
+    if(imgOverlay&&imgOverlay.classList.contains('active')&&imgOverlay.contains(e.target))return;
+    if(e.target.tagName==='IMG'&&editor.contains(e.target))return;
+    deselectImg();
+  });
+  editor.addEventListener('keydown',e=>{
+    if(e.key==='Tab'){
+      e.preventDefault();
+      document.execCommand('insertText',false,'    ');
+    }
+    if(e.key==='Escape')deselectImg();
+    if((e.key==='Delete'||e.key==='Backspace')&&selectedImg&&editor.contains(selectedImg)){
+      e.preventDefault();
+      const next=selectedImg.nextElementSibling||selectedImg.previousElementSibling;
+      selectedImg.remove();
+      deselectImg();
+      saveContent();
+      if(next&&next.nodeType===1){
+        const range=document.createRange();
+        range.setStart(next,0);
+        range.collapse(true);
+        const sel=window.getSelection();
+        sel.removeAllRanges();
+        sel.addRange(range);
+      }
+    }
+  });
+  document.addEventListener('keydown',e=>{
+    if((e.ctrlKey||e.metaKey)&&e.key==='n'){e.preventDefault();createPage()}
+  });
+  document.getElementById('search-input').addEventListener('keydown',e=>{
+    if(e.key==='Escape'){e.target.value='';renderPages()}
+  });
+  window.addEventListener('scroll',positionOverlay,true);
+  window.addEventListener('resize',positionOverlay);
+});
+</script>
+</body>
+</html>
