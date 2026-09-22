@@ -38,6 +38,11 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .toolbar-sep{width:1px;height:16px;background:var(--border)}
 .toolbar-spacer{flex:1}
 #copy-btn{margin-left:auto}
+.export-wrap{position:relative}
+.export-dropdown{position:absolute;top:100%;right:0;margin-top:4px;background:var(--sidebar);border:1px solid var(--border);border-radius:8px;padding:4px;min-width:140px;display:none;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.4)}
+.export-dropdown.open{display:block}
+.export-option{display:flex;align-items:center;gap:8px;padding:8px 12px;border-radius:6px;cursor:pointer;font-size:13px;color:var(--text2);transition:all .12s;border:none;background:none;width:100%;text-align:left}
+.export-option:hover{background:var(--hover);color:var(--text)}
 #editor{flex:1;padding:40px 60px 100px;overflow-y:auto;font-size:15px;line-height:1.8;outline:none;min-height:100%}
 #editor::-webkit-scrollbar{width:6px}
 #editor::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
@@ -121,7 +126,14 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
       <button class="toolbar-btn" onclick="insertHR()" title="Horizontal rule"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="8" x2="14" y2="8"/></svg></button>
       <button class="toolbar-btn" onclick="insertCode()" title="Code block"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 4 1 8 5 12"/><polyline points="11 4 15 8 11 12"/><line x1="9" y1="2" x2="7" y2="14"/></svg></button>
       <button id="copy-btn" class="toolbar-btn" onclick="copyNote()" title="Copy note"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 0 1 2 9.5v-7A1.5 1.5 0 0 1 3.5 1h7A1.5 1.5 0 0 1 12 2.5V5"/></svg><span id="copy-text">Copy</span></button>
-      <button class="toolbar-btn" onclick="exportNote()" title="Export as Markdown"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12V4a1 1 0 0 1 1-1h6l4 4v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/><path d="M9 3v4h4"/></svg></button>
+      <div class="export-wrap">
+        <button class="toolbar-btn" onclick="toggleExport()" title="Export"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12V4a1 1 0 0 1 1-1h6l4 4v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/><path d="M9 3v4h4"/></svg></button>
+        <div class="export-dropdown" id="export-dropdown">
+          <button class="export-option" onclick="exportNote('md')">Markdown (.md)</button>
+          <button class="export-option" onclick="exportNote('txt')">Plain Text (.txt)</button>
+          <button class="export-option" onclick="exportNote('html')">HTML (.html)</button>
+        </div>
+      </div>
     </div>
     <div id="empty-state">
       <div class="icon">&#128221;</div>
@@ -311,19 +323,36 @@ function copyNote(){
   }).catch(()=>toast('Failed to copy'));
 }
 
-function exportNote(){
+function toggleExport(){
+  document.getElementById('export-dropdown').classList.toggle('open');
+}
+
+function exportNote(fmt){
+  document.getElementById('export-dropdown').classList.remove('open');
   const page=pages.find(p=>p.id===activePageId);
   if(!page)return;
   const editor=document.getElementById('editor');
-  let md=editor.innerText||'';
-  md=md.replace(/\u00a0/g,' ');
-  const blob=new Blob([md],{type:'text/markdown'});
+  const filename=(page.title||'note').replace(/[^a-z0-9]/gi,'_');
+  let content,blob,ext;
+  if(fmt==='txt'){
+    content=editor.innerText||'';
+    blob=new Blob([content],{type:'text/plain'});
+    ext='txt';
+  }else if(fmt==='html'){
+    content='<!DOCTYPE html>\n<html><head><meta charset="UTF-8"><title>'+esc(page.title)+'</title><style>body{font-family:sans-serif;max-width:700px;margin:40px auto;padding:0 20px;line-height:1.7;color:#222}img{max-width:100%}pre{background:#f4f4f4;padding:12px;border-radius:6px;overflow-x:auto}blockquote{border-left:3px solid #ccc;padding-left:16px;color:#666}</style></head><body>\n'+editor.innerHTML+'\n</body></html>';
+    blob=new Blob([content],{type:'text/html'});
+    ext='html';
+  }else{
+    content=editor.innerText||'';
+    blob=new Blob([content],{type:'text/markdown'});
+    ext='md';
+  }
   const a=document.createElement('a');
   a.href=URL.createObjectURL(blob);
-  a.download=(page.title||'note').replace(/[^a-z0-9]/gi,'_')+'.md';
+  a.download=filename+'.'+ext;
   a.click();
   URL.revokeObjectURL(a.href);
-  toast('Exported as Markdown');
+  toast('Exported as '+ext.toUpperCase());
 }
 
 function saveContent(){
@@ -545,6 +574,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   });
   window.addEventListener('scroll',positionOverlay,true);
   window.addEventListener('resize',positionOverlay);
+  document.addEventListener('click',e=>{
+    const wrap=e.target.closest('.export-wrap');
+    if(!wrap)document.getElementById('export-dropdown').classList.remove('open');
+  });
   setInterval(()=>{
     const el=document.getElementById('note-date');
     const page=pages.find(p=>p.id===activePageId);
