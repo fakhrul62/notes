@@ -36,6 +36,8 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .toolbar-btn:hover{background:var(--hover);color:var(--text)}
 .toolbar-btn.active{color:var(--accent2)}
 .toolbar-sep{width:1px;height:16px;background:var(--border)}
+.toolbar-spacer{flex:1}
+#copy-btn{margin-left:auto}
 #editor{flex:1;padding:40px 60px 100px;overflow-y:auto;font-size:15px;line-height:1.8;outline:none;min-height:100%}
 #editor::-webkit-scrollbar{width:6px}
 #editor::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
@@ -107,6 +109,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
       <div class="toolbar-sep"></div>
       <button class="toolbar-btn" onclick="execCmd('createLink',prompt('Enter URL:'))" title="Insert link"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.5 9.5a3.5 3.5 0 0 0 5 0l2-2a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M9.5 6.5a3.5 3.5 0 0 0-5 0l-2 2a3.5 3.5 0 0 0 5 5l1-1"/></svg></button>
       <button class="toolbar-btn" onclick="insertHR()" title="Horizontal rule"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="8" x2="14" y2="8"/></svg></button>
+      <button id="copy-btn" class="toolbar-btn" onclick="copyNote()" title="Copy note"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 0 1 2 9.5v-7A1.5 1.5 0 0 1 3.5 1h7A1.5 1.5 0 0 1 12 2.5V5"/></svg><span id="copy-text">Copy</span></button>
     </div>
     <div id="empty-state">
       <div class="icon">&#128221;</div>
@@ -207,6 +210,17 @@ function execCmd(cmd,val){
 }
 
 function insertHR(){document.execCommand('insertHorizontalRule');saveContent()}
+
+function copyNote(){
+  const editor=document.getElementById('editor');
+  const txt=editor.innerText||'';
+  if(!txt.trim()){toast('Nothing to copy');return}
+  navigator.clipboard.writeText(txt).then(()=>{
+    const btn=document.getElementById('copy-text');
+    btn.textContent='Copied!';
+    setTimeout(()=>btn.textContent='Copy',1500);
+  }).catch(()=>toast('Failed to copy'));
+}
 
 function saveContent(){
   if(!activePageId)return;
