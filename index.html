@@ -194,6 +194,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
       <button class="toolbar-btn" onclick="execCmd('createLink',prompt('Enter URL:'))" title="Insert link"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M6.5 9.5a3.5 3.5 0 0 0 5 0l2-2a3.5 3.5 0 0 0-5-5l-1 1"/><path d="M9.5 6.5a3.5 3.5 0 0 0-5 0l-2 2a3.5 3.5 0 0 0 5 5l1-1"/></svg></button>
       <button class="toolbar-btn" onclick="insertHR()" title="Horizontal rule"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><line x1="2" y1="8" x2="14" y2="8"/></svg></button>
       <button class="toolbar-btn" onclick="insertCode()" title="Code block"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="5 4 1 8 5 12"/><polyline points="11 4 15 8 11 12"/><line x1="9" y1="2" x2="7" y2="14"/></svg></button>
+      <button class="toolbar-btn" onclick="clearFormatting()" title="Clear formatting (selection or full note)"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2.5 3.5h7"/><path d="M6 3.5v6"/><path d="M3.5 9.5l5 5"/><path d="M8.5 9.5l-5 5"/></svg></button>
       <div class="toolbar-sep"></div>
       <button class="toolbar-btn" id="split-btn" onclick="toggleSplit()" title="Split view"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="1" y="2" width="14" height="12" rx="2"/><line x1="8" y1="2" x2="8" y2="14"/></svg></button>
       <button class="toolbar-btn" id="sound-btn" onclick="toggleSound()" title="Sound effects"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 6v4h3l4 3V3L5 6H2z"/><path d="M11 5.5a3 3 0 0 1 0 5"/></svg></button>
@@ -203,6 +204,8 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
         <div class="theme-dropdown" id="theme-dropdown"></div>
       </div>
       <div id="save-indicator"></div>
+      <button class="toolbar-btn" onclick="document.execCommand('undo')" title="Undo"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h7a4 4 0 0 1 0 8H7"/><polyline points="6 4 3 8 6 12"/></svg></button>
+      <button class="toolbar-btn" onclick="document.execCommand('redo')" title="Redo"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8H6a4 4 0 0 0 0 8h3"/><polyline points="10 4 13 8 10 12"/></svg></button>
       <button id="copy-btn" class="toolbar-btn" onclick="copyNote()" title="Copy note"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 0 1 2 9.5v-7A1.5 1.5 0 0 1 3.5 1h7A1.5 1.5 0 0 1 12 2.5V5"/></svg><span id="copy-text">Copy</span></button>
       <div class="export-wrap">
         <button class="toolbar-btn" onclick="toggleExport()" title="Export"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12V4a1 1 0 0 1 1-1h6l4 4v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/><path d="M9 3v4h4"/></svg></button>
@@ -415,6 +418,164 @@ function execCmd(cmd,val){
   document.execCommand(cmd,false,val||null);
   document.getElementById('editor').focus();
   saveContent();
+}
+
+function stripFormattingHTML(html){
+  const d=document.createElement('div');
+  d.innerHTML=html;
+  const blocks=Array.from(d.querySelectorAll('h1,h2,h3,h4,h5,h6,blockquote,pre,ul,ol,li,div'));
+  for(let i=blocks.length-1;i>=0;i--){
+    const el=blocks[i];
+    if(!el.parentNode)continue;
+    if(el.tagName==='UL'||el.tagName==='OL'){
+      const frag=document.createDocumentFragment();
+      while(el.firstChild)frag.appendChild(el.firstChild);
+      el.replaceWith(frag);
+    }else if(el.tagName==='PRE'){
+      const p=document.createElement('p');
+      while(el.firstChild)p.appendChild(el.firstChild);
+      el.replaceWith(p);
+      const texts=[];
+      const w=document.createTreeWalker(p,NodeFilter.SHOW_TEXT);
+      while(w.nextNode())texts.push(w.currentNode);
+      texts.forEach(t=>{
+        if(!t.nodeValue||t.nodeValue.indexOf('\n')<0)return;
+        const parts=t.nodeValue.split('\n');
+        const f=document.createDocumentFragment();
+        parts.forEach((s,i)=>{
+          if(i)f.appendChild(document.createElement('br'));
+          if(s)f.appendChild(document.createTextNode(s));
+        });
+        t.replaceWith(f);
+      });
+    }else{
+      const p=document.createElement('p');
+      while(el.firstChild){
+        const n=el.firstChild;
+        if(n.nodeType===1&&(n.tagName==='P'||n.tagName==='DIV')){
+          const hasContent=n.textContent.trim()||n.querySelector('img,hr');
+          if(hasContent&&p.childNodes.length)p.appendChild(document.createElement('br'));
+          while(n.firstChild)p.appendChild(n.firstChild);
+          n.remove();
+        }else p.appendChild(n);
+      }
+      el.replaceWith(p);
+    }
+  }
+  d.querySelectorAll('a,b,strong,i,em,u,s,strike,del,ins,mark,small,sup,sub,font,span,code,tt,kbd,samp,center,abbr,cite,dfn,var,q').forEach(el=>{
+    if(!el.parentNode)return;
+    while(el.firstChild)el.parentNode.insertBefore(el.firstChild,el);
+    el.parentNode.removeChild(el);
+  });
+  d.querySelectorAll('*').forEach(el=>{
+    if(el.tagName==='IMG')return;
+    ['style','class','color','face','size','align','dir','bgcolor','width','height','border'].forEach(a=>el.removeAttribute(a));
+  });
+  d.normalize();
+  return d.innerHTML;
+}
+
+function coversContents(range,el){
+  const c=document.createRange();
+  c.selectNodeContents(el);
+  return range.compareBoundaryPoints(Range.START_TO_START,c)<=0&&range.compareBoundaryPoints(Range.END_TO_END,c)>=0;
+}
+
+function tagToP(el,range){
+  const p=document.createElement('p');
+  const s={c:range.startContainer,o:range.startOffset};
+  const e={c:range.endContainer,o:range.endOffset};
+  while(el.firstChild){
+    const n=el.firstChild;
+    if(n.nodeType===1&&(n.tagName==='P'||n.tagName==='DIV')){
+      const hasContent=n.textContent.trim()||n.querySelector('img,hr');
+      if(hasContent&&p.childNodes.length)p.appendChild(document.createElement('br'));
+      const k=p.childNodes.length;
+      if(s.c===n){s.c=p;s.o=k+Math.min(s.o,n.childNodes.length)}
+      if(e.c===n){e.c=p;e.o=k+Math.min(e.o,n.childNodes.length)}
+      while(n.firstChild)p.appendChild(n.firstChild);
+      n.remove();
+    }else p.appendChild(n);
+  }
+  if(s.c===el){s.c=p;s.o=Math.min(s.o,p.childNodes.length)}
+  if(e.c===el){e.c=p;e.o=Math.min(e.o,p.childNodes.length)}
+  el.replaceWith(p);
+  const maxOff=n=>n.nodeType===3?n.length:n.childNodes.length;
+  range.setStart(s.c,Math.min(s.o,maxOff(s.c)));
+  range.setEnd(e.c,Math.min(e.o,maxOff(e.c)));
+}
+
+function cleanRangeFormatting(range,root){
+  document.execCommand('styleWithCSS',false,false);
+  document.execCommand('removeFormat',false,null);
+  document.execCommand('unlink',false,null);
+  const sel=window.getSelection();
+  const live=(sel.rangeCount&&root.contains(sel.getRangeAt(0).startContainer))?sel.getRangeAt(0):range;
+  if(!root.contains(live.startContainer)||!root.contains(live.endContainer))return;
+  root.querySelectorAll('span,font,code,[style],[class],[color],[face],[size],[align]').forEach(el=>{
+    if(!el.parentNode||el.tagName==='IMG')return;
+    if(!coversContents(live,el))return;
+    if(el.tagName==='SPAN'||el.tagName==='FONT'||el.tagName==='CODE'){
+      const parent=el.parentNode;
+      const pi=Array.prototype.indexOf.call(parent.childNodes,el);
+      const fixS=live.startContainer===el,fixE=live.endContainer===el;
+      const so=live.startOffset,eo=live.endOffset;
+      while(el.firstChild)parent.insertBefore(el.firstChild,el);
+      parent.removeChild(el);
+      if(fixS)live.setStart(parent,Math.min(pi+so,parent.childNodes.length));
+      if(fixE)live.setEnd(parent,Math.min(pi+eo,parent.childNodes.length));
+    }else{
+      ['style','class','color','face','size','align','bgcolor'].forEach(a=>el.removeAttribute(a));
+    }
+  });
+  const blocks=Array.from(root.querySelectorAll('h1,h2,h3,h4,h5,h6,blockquote'));
+  for(let i=blocks.length-1;i>=0;i--){
+    const el=blocks[i];
+    if(el.parentNode&&live.intersectsNode(el))tagToP(el,live);
+  }
+  Array.from(root.querySelectorAll('pre')).forEach(pre=>{
+    if(!pre.parentNode||!coversContents(live,pre))return;
+    const parent=pre.parentNode;
+    const idx=Array.prototype.indexOf.call(parent.childNodes,pre);
+    const holder=document.createElement('div');
+    holder.innerHTML=stripFormattingHTML(pre.innerHTML);
+    const first=holder.firstChild;
+    while(holder.firstChild)parent.insertBefore(holder.firstChild,pre);
+    pre.remove();
+    if(!root.contains(live.startContainer)||!root.contains(live.endContainer)){
+      if(first)live.collapse(first,0);
+      else if(root.contains(parent))live.collapse(parent,Math.min(idx,parent.childNodes.length));
+    }
+  });
+}
+
+function clearFormatting(){
+  const sel=window.getSelection();
+  const main=document.getElementById('editor');
+  const split=document.getElementById('split-editor');
+  if(!sel.rangeCount){toast('Click in the note first');return}
+  const raw=sel.getRangeAt(0);
+  let editor=null,range=null;
+  [main,split].forEach(ed=>{
+    if(ed.contains(raw.commonAncestorContainer)||raw.commonAncestorContainer===ed){
+      if(!editor){editor=ed;range=raw}
+    }
+  });
+  if(!editor){toast('Click in the note first');return}
+  const fullDoc=range.collapsed||coversContents(range,editor);
+  if(fullDoc){
+    editor.innerHTML=stripFormattingHTML(editor.innerHTML);
+    const end=document.createRange();
+    end.selectNodeContents(editor);
+    end.collapse(false);
+    sel.removeAllRanges();
+    sel.addRange(end);
+  }else{
+    cleanRangeFormatting(range,editor);
+  }
+  editor.focus();
+  if(editor===split)saveSplitContent();
+  else saveContent();
 }
 
 function insertHR(){document.execCommand('insertHorizontalRule');saveContent()}
