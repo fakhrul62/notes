@@ -39,11 +39,15 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .toolbar-btn svg{pointer-events:none}
 .toolbar-btn:hover{background:var(--hover);color:var(--text)}
 .toolbar-btn.active{color:var(--accent2)}
-.highlight-wrap{display:flex;align-items:center;gap:2px}
-.highlight-color{width:30px;height:30px;padding:3px;border:1px solid var(--border);border-radius:6px;background:var(--hover);cursor:pointer}
-.highlight-color::-webkit-color-swatch-wrapper{padding:0}
-.highlight-color::-webkit-color-swatch{border:0;border-radius:3px}
-.highlight-color::-moz-color-swatch{border:0;border-radius:3px}
+.color-format-wrap{display:flex;align-items:center;gap:2px}
+.format-color{width:22px;height:22px;padding:2px;border:1px solid var(--border);border-radius:50%;background:var(--hover);cursor:pointer}
+.format-color::-webkit-color-swatch-wrapper{padding:0}
+.format-color::-webkit-color-swatch{border:0;border-radius:50%}
+.format-color::-moz-color-swatch{border:0;border-radius:50%}
+.text-color-icon{font-size:16px;font-weight:700;line-height:1}
+.font-size-wrap{display:flex;align-items:center;gap:2px}
+.font-size-small{font-size:12px;line-height:1}
+.font-size-large{font-size:19px;line-height:1}
 .toolbar-sep{width:1px;height:16px;background:var(--border)}
 .toolbar-spacer{flex:1}
 #copy-btn{margin-left:auto}
@@ -104,7 +108,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
   #editor-toolbar{padding:8px 12px;gap:4px;overflow-x:auto;overflow-y:hidden;flex-wrap:nowrap;-webkit-overflow-scrolling:touch;scrollbar-width:none}
   #editor-toolbar::-webkit-scrollbar{display:none}
   .toolbar-btn{padding:8px 8px;min-width:36px;min-height:36px;font-size:12px}
-  .highlight-color{width:36px;height:36px}
+  .format-color{width:26px;height:26px}
   .toolbar-sep{margin:0 2px}
   #split-btn,#sound-btn{display:none!important}
   .pin-btn{width:36px;height:36px}
@@ -188,9 +192,17 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
       <button class="toolbar-btn" onclick="execCmd('bold')" title="Bold"><b>B</b></button>
       <button class="toolbar-btn" onclick="execCmd('italic')" title="Italic"><i>I</i></button>
       <button class="toolbar-btn" onclick="execCmd('underline')" title="Underline"><u>U</u></button>
-      <div class="highlight-wrap" id="highlight-wrap">
+      <div class="color-format-wrap" id="text-color-wrap">
+        <button class="toolbar-btn" type="button" onclick="applyTextColor()" title="Color selected text with the current color" aria-label="Color selected text"><span class="text-color-icon">A</span></button>
+        <input class="format-color" id="text-color" type="color" value="#ef4444" title="Choose text color" aria-label="Choose text color" onchange="applyTextColor()">
+      </div>
+      <div class="color-format-wrap" id="highlight-wrap">
         <button class="toolbar-btn" type="button" onclick="applyHighlight()" title="Highlight selected text with the current color" aria-label="Highlight selected text"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11 11 5l2 2-6 6H5v-2Z"/><path d="M10 4l1-1a1 1 0 0 1 1.4 0L14 4.6A1 1 0 0 1 14 6l-1 1"/><path d="M2 15h12"/></svg></button>
-        <input class="highlight-color" id="highlight-color" type="color" value="#ffe066" title="Choose highlight color" aria-label="Choose highlight color" onchange="applyHighlight()">
+        <input class="format-color" id="highlight-color" type="color" value="#ffe066" title="Choose highlight color" aria-label="Choose highlight color" onchange="applyHighlight()">
+      </div>
+      <div class="font-size-wrap" id="font-size-wrap">
+        <button class="toolbar-btn" type="button" onclick="adjustFontSize(-2)" title="Decrease selected text size" aria-label="Decrease selected text size"><span class="font-size-small">A−</span></button>
+        <button class="toolbar-btn" type="button" onclick="adjustFontSize(2)" title="Increase selected text size" aria-label="Increase selected text size"><span class="font-size-large">A+</span></button>
       </div>
       <div class="toolbar-sep"></div>
       <button class="toolbar-btn" onclick="execCmd('formatBlock','h1')" title="Heading 1">H1</button>
@@ -430,35 +442,71 @@ function execCmd(cmd,val){
   saveContent();
 }
 
-let highlightSelection=null;
-function captureHighlightSelection(){
+let formatSelection=null;
+function captureFormatSelection(){
   const selection=window.getSelection();
   if(!selection.rangeCount||selection.isCollapsed)return;
   const range=selection.getRangeAt(0);
   const editor=[document.getElementById('editor'),document.getElementById('split-editor')]
     .find(ed=>ed.contains(range.startContainer)&&ed.contains(range.endContainer));
-  if(editor)highlightSelection={range:range.cloneRange(),editor,pageId:editor.id==='editor'?activePageId:splitPageId};
-  else highlightSelection=null;
+  if(editor)formatSelection={range:range.cloneRange(),editor,pageId:editor.id==='editor'?activePageId:splitPageId};
+  else formatSelection=null;
 }
 
-function applyHighlight(){
-  const saved=highlightSelection;
-  const color=document.getElementById('highlight-color').value;
+function restoreFormatSelection(){
+  const saved=formatSelection;
   if(!saved||!saved.editor.contains(saved.range.startContainer)||!saved.editor.contains(saved.range.endContainer)||
      saved.pageId!==(saved.editor.id==='editor'?activePageId:splitPageId)){
     toast('Select text in a note first');
-    return;
+    return null;
   }
   saved.editor.focus();
   const selection=window.getSelection();
   selection.removeAllRanges();
   selection.addRange(saved.range.cloneRange());
-  document.execCommand('styleWithCSS',false,true);
-  document.execCommand('hiliteColor',false,color);
-  document.execCommand('styleWithCSS',false,false);
-  if(saved.editor.id==='split-editor')saveSplitContent();
+  return saved.editor;
+}
+
+function saveFormattedContent(editor){
+  if(editor.id==='split-editor')saveSplitContent();
   else saveContent();
-  captureHighlightSelection();
+  captureFormatSelection();
+}
+
+function applySelectionColor(command,colorInputId){
+  const editor=restoreFormatSelection();
+  if(!editor)return;
+  const color=document.getElementById(colorInputId).value;
+  document.execCommand('styleWithCSS',false,true);
+  document.execCommand(command,false,color);
+  document.execCommand('styleWithCSS',false,false);
+  saveFormattedContent(editor);
+}
+
+function applyTextColor(){applySelectionColor('foreColor','text-color')}
+function applyHighlight(){applySelectionColor('hiliteColor','highlight-color')}
+
+function adjustFontSize(change){
+  const editor=restoreFormatSelection();
+  if(!editor)return;
+  const range=window.getSelection().getRangeAt(0);
+  let node=range.startContainer;
+  if(node.nodeType===Node.ELEMENT_NODE){
+    node=node.childNodes[range.startOffset]||node;
+    while(node.firstChild)node=node.firstChild;
+  }
+  const element=node.nodeType===Node.ELEMENT_NODE?node:node.parentElement;
+  const current=parseFloat(getComputedStyle(element).fontSize)||15;
+  const size=Math.max(8,Math.min(96,Math.round(current)+change));
+  const existing=new Set(editor.querySelectorAll('font[size="7"]'));
+  document.execCommand('styleWithCSS',false,false);
+  document.execCommand('fontSize',false,'7');
+  editor.querySelectorAll('font[size="7"]').forEach(font=>{
+    if(existing.has(font))return;
+    font.removeAttribute('size');
+    font.style.fontSize=size+'px';
+  });
+  saveFormattedContent(editor);
 }
 
 function stripFormattingHTML(html){
@@ -1006,11 +1054,12 @@ function initThemes(){
 document.addEventListener('DOMContentLoaded',()=>{
   load();
   initThemes();
-  document.getElementById('highlight-wrap').addEventListener('pointerdown',captureHighlightSelection);
+  document.querySelectorAll('.color-format-wrap').forEach(wrap=>wrap.addEventListener('pointerdown',captureFormatSelection));
+  document.getElementById('font-size-wrap').addEventListener('pointerdown',captureFormatSelection);
   document.addEventListener('selectionchange',()=>{
     const selection=window.getSelection();
-    if(selection.rangeCount&&!selection.isCollapsed)captureHighlightSelection();
-    else if(document.activeElement&&document.activeElement.classList.contains('panel-editor'))highlightSelection=null;
+    if(selection.rangeCount&&!selection.isCollapsed)captureFormatSelection();
+    else if(document.activeElement&&document.activeElement.classList.contains('panel-editor'))formatSelection=null;
   });
   const editor=document.getElementById('editor');
   const editorArea=document.getElementById('editor-area');
