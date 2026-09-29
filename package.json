@@ -1,0 +1,26 @@
+{
+  "name": "note",
+  "version": "1.0.0",
+  "description": "A compact browser-based document editor",
+  "scripts": {
+    "build:vendor": "node scripts/build-vendor.mjs"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fakhrul62/notes.git"
+  },
+  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/fakhrul62/notes/issues"
+  },
+  "homepage": "https://github.com/fakhrul62/notes#readme",
+  "dependencies": {
+    "dom-docx": "^1.0.3",
+    "dompurify": "^3.4.16",
+    "katex": "^0.18.9",
+    "mammoth": "^1.13.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.2"
+  }
+}
