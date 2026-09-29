@@ -7,7 +7,9 @@
 <link rel="icon" type="image/svg+xml" href="favicon.svg">
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-:root{--bg:#0e0e10;--sidebar:#18181b;--editor:#111113;--accent:#525252;--accent2:#737373;--text:#d4d4d8;--text2:#71717a;--border:#27272a;--hover:#222225;--danger:#dc2626}
+:root{--bg:#0e0e10;--sidebar:#18181b;--editor:#111113;--accent:#525252;--accent2:#737373;--text:#d4d4d8;--text2:#71717a;--border:#27272a;--hover:#222225;--danger:#dc2626;--code-bg:#1a1a1e;--code-text:#e4e4e7;--action-hover:rgba(255,255,255,.1);--drop-tint:rgba(82,82,82,.15);--link:var(--accent2)}
+:root[data-appearance="white"]{--bg:#fff;--sidebar:#fff;--editor:#fff;--text:#202124;--text2:#62666e;--border:#e3e5e8;--hover:#eff0f2;--code-bg:#f3f4f6;--code-text:#26272b;--action-hover:rgba(0,0,0,.06);--drop-tint:rgba(82,82,82,.08);--link:var(--accent)}
+:root[data-appearance="cream"]{--bg:#fffaf0;--sidebar:#f6f0e5;--editor:#fffaf0;--text:#3a332b;--text2:#756d61;--border:#ded4c5;--hover:#eee5d7;--code-bg:#f0e7d9;--code-text:#403a32;--action-hover:rgba(65,45,25,.08);--drop-tint:rgba(120,85,50,.1);--link:var(--accent)}
 html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--text)}
 #app{display:flex;height:100vh}
 
@@ -27,7 +29,7 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .page-item .page-actions{display:flex;gap:4px;opacity:0;transition:opacity .12s}
 .page-item:hover .page-actions,.page-item.active .page-actions{opacity:1}
 .page-action-btn{background:none;border:none;color:var(--text2);cursor:pointer;width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:12px;transition:all .12s}
-.page-action-btn:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.page-action-btn:hover{background:var(--action-hover);color:var(--text)}
 .page-action-btn.delete:hover{color:var(--danger)}
 #editor-area{flex:1;display:flex;flex-direction:column;overflow:hidden;background:var(--editor)}
 #editor-area.reading-mode #editor-toolbar{display:none}
@@ -50,8 +52,14 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .font-size-large{font-size:16px;line-height:1}
 .toolbar-sep{width:1px;height:14px;margin:0 2px;background:var(--border);flex:0 0 1px}
 .toolbar-spacer{flex:1}
-#copy-btn{margin-left:auto}
 #copy-text{display:none}
+.appearance-wrap{position:relative;margin-left:auto}
+.appearance-menu{position:fixed;display:none;z-index:30;width:152px;padding:4px;background:var(--sidebar);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.22)}
+.appearance-menu.open{display:block}
+.appearance-option{width:100%;display:flex;align-items:center;gap:8px;padding:7px 8px;border:0;border-radius:5px;background:none;color:var(--text);font-size:12px;text-align:left;cursor:pointer}
+.appearance-option:hover,.appearance-option.active{background:var(--hover)}
+.appearance-swatch{width:16px;height:16px;flex:0 0 16px;border:1px solid var(--border);border-radius:50%}
+.appearance-option.active .appearance-swatch{outline:2px solid var(--accent2);outline-offset:2px}
 .export-wrap{position:relative}
 .export-dropdown{position:absolute;top:100%;right:0;margin-top:4px;background:var(--sidebar);border:1px solid var(--border);border-radius:8px;padding:4px;min-width:140px;display:none;z-index:20;box-shadow:0 8px 24px rgba(0,0,0,.4)}
 .export-dropdown.open{display:block}
@@ -71,10 +79,10 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .editor-panel .panel-editor h3{font-size:18px;font-weight:600;margin:4px 0}
 .editor-panel .panel-editor blockquote{border-left:3px solid var(--accent);padding-left:16px;color:var(--text2);margin:8px 0}
 .editor-panel .panel-editor ul,.editor-panel .panel-editor ol{padding-left:24px;margin:8px 0}
-.editor-panel .panel-editor a{color:var(--accent2)}
+.editor-panel .panel-editor a{color:var(--link)}
 .editor-panel .panel-editor hr{border:none;border-top:1px solid var(--border);margin:16px 0}
-.editor-panel .panel-editor pre{background:#1a1a1e;border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin:8px 0;overflow-x:auto;font-size:13px;line-height:1.5}
-.editor-panel .panel-editor code{font-family:'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;background:#1a1a1e;padding:2px 5px;border-radius:4px;color:#e4e4e7}
+.editor-panel .panel-editor pre{background:var(--code-bg);border:1px solid var(--border);border-radius:6px;padding:12px 16px;margin:8px 0;overflow-x:auto;font-size:13px;line-height:1.5}
+.editor-panel .panel-editor code{font-family:'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;font-size:13px;background:var(--code-bg);padding:2px 5px;border-radius:4px;color:var(--code-text)}
 .editor-panel .panel-editor pre code{background:none;padding:0;border-radius:0}
 .panel-header{padding:8px 16px;border-bottom:1px solid var(--border);font-size:12px;color:var(--text2);display:flex;align-items:center;gap:8px;background:var(--sidebar)}
 .panel-header select{background:var(--bg);border:1px solid var(--border);color:var(--text);padding:4px 8px;border-radius:4px;font-size:12px;outline:none;cursor:pointer}
@@ -142,9 +150,9 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .page-item.dragging{opacity:.4}
 .page-item.drag-over{border-top:2px solid var(--accent2)}
 .pin-btn{background:none;border:none;color:var(--text2);cursor:pointer;width:22px;height:22px;border-radius:4px;display:flex;align-items:center;justify-content:center;font-size:11px;transition:all .12s;flex-shrink:0}
-.pin-btn:hover{background:rgba(255,255,255,.1);color:var(--text)}
+.pin-btn:hover{background:var(--action-hover);color:var(--text)}
 .pin-btn.pinned{color:var(--accent2)}
-.drop-overlay{position:absolute;inset:0;background:rgba(82,82,82,.15);border:2px dashed var(--accent2);border-radius:8px;display:none;align-items:center;justify-content:center;z-index:5;pointer-events:none;font-size:14px;color:var(--text2)}
+.drop-overlay{position:absolute;inset:0;background:var(--drop-tint);border:2px dashed var(--accent2);border-radius:8px;display:none;align-items:center;justify-content:center;z-index:5;pointer-events:none;font-size:14px;color:var(--text2)}
 .drop-overlay.visible{display:flex}
 #save-indicator{width:6px;height:6px;border-radius:50%;background:var(--accent2);margin-left:4px;transition:all .2s;flex-shrink:0}
 #save-indicator.saving{background:#eab308;animation:pulse .6s ease-in-out infinite}
@@ -164,8 +172,9 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 #reading-overlay .reading-content h3{font-size:22px;font-weight:600;margin:8px 0 4px}
 #reading-overlay .reading-content img{max-width:100%;border-radius:8px;margin:12px 0}
 #reading-overlay .reading-content blockquote{border-left:3px solid var(--accent);padding-left:20px;color:var(--text2);margin:12px 0;font-style:italic}
-#reading-overlay .reading-content pre{background:#1a1a1e;border:1px solid var(--border);border-radius:8px;padding:16px;margin:12px 0;overflow-x:auto;font-size:14px}
-#reading-overlay .reading-content code{font-family:'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;font-size:14px;background:#1a1a1e;padding:2px 6px;border-radius:4px}
+#reading-overlay .reading-content a{color:var(--link)}
+#reading-overlay .reading-content pre{background:var(--code-bg);border:1px solid var(--border);border-radius:8px;padding:16px;margin:12px 0;overflow-x:auto;font-size:14px}
+#reading-overlay .reading-content code{font-family:'SF Mono',SFMono-Regular,Menlo,Consolas,monospace;font-size:14px;background:var(--code-bg);color:var(--code-text);padding:2px 6px;border-radius:4px}
 #reading-overlay .reading-content pre code{background:none;padding:0}
 #reading-exit{position:fixed;top:24px;right:24px;background:var(--hover);border:1px solid var(--border);color:var(--text);padding:8px 16px;border-radius:8px;cursor:pointer;font-size:13px;z-index:51;transition:all .12s}
 #reading-exit:hover{background:var(--border)}
@@ -222,12 +231,20 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
       <button class="toolbar-btn" id="sound-btn" onclick="toggleSound()" title="Sound effects"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 6v4h3l4 3V3L5 6H2z"/><path d="M11 5.5a3 3 0 0 1 0 5"/></svg></button>
       <button class="toolbar-btn" onclick="toggleReadingMode()" title="Reading mode"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"><path d="M2 3h12v10H2z"/><path d="M6 3v10"/></svg></button>
       <div class="theme-wrap">
-        <button class="toolbar-btn" onclick="toggleTheme()" title="Theme color"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg></button>
+        <button class="toolbar-btn" onclick="toggleTheme()" title="Accent color" aria-label="Accent color"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><circle cx="8" cy="8" r="2" fill="currentColor"/></svg></button>
         <div class="theme-dropdown" id="theme-dropdown"></div>
       </div>
       <div id="save-indicator"></div>
       <button class="toolbar-btn" onclick="document.execCommand('undo')" title="Undo"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M3 8h7a4 4 0 0 1 0 8H7"/><polyline points="6 4 3 8 6 12"/></svg></button>
       <button class="toolbar-btn" onclick="document.execCommand('redo')" title="Redo"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M13 8H6a4 4 0 0 0 0 8h3"/><polyline points="10 4 13 8 10 12"/></svg></button>
+      <div class="appearance-wrap">
+        <button class="toolbar-btn" id="appearance-btn" type="button" onclick="toggleAppearance()" title="App appearance" aria-label="App appearance" aria-haspopup="true" aria-expanded="false"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="8" cy="8" r="6"/><path d="M8 2a6 6 0 0 0 0 12V2Z" fill="currentColor" stroke="none"/></svg></button>
+        <div class="appearance-menu" id="appearance-menu" role="group" aria-label="App appearance">
+          <button class="appearance-option" type="button" data-appearance="black" onclick="applyAppearance('black')"><span class="appearance-swatch" style="background:#111113"></span>Black</button>
+          <button class="appearance-option" type="button" data-appearance="white" onclick="applyAppearance('white')"><span class="appearance-swatch" style="background:#fff"></span>Pure White</button>
+          <button class="appearance-option" type="button" data-appearance="cream" onclick="applyAppearance('cream')"><span class="appearance-swatch" style="background:#fff4dd"></span>Soft Cream</button>
+        </div>
+      </div>
       <button id="copy-btn" class="toolbar-btn" onclick="copyNote()" title="Copy note" aria-label="Copy note"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="9" height="9" rx="1.5"/><path d="M5 11H3.5A1.5 1.5 0 0 1 2 9.5v-7A1.5 1.5 0 0 1 3.5 1h7A1.5 1.5 0 0 1 12 2.5V5"/></svg><span id="copy-text">Copy</span></button>
       <div class="export-wrap">
         <button class="toolbar-btn" onclick="toggleExport()" title="Export"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M2 12V4a1 1 0 0 1 1-1h6l4 4v5a1 1 0 0 1-1 1H3a1 1 0 0 1-1-1z"/><path d="M9 3v4h4"/></svg></button>
@@ -298,6 +315,7 @@ function load(){
   }
   const savedTheme=localStorage.getItem('notes_theme');
   if(savedTheme)applyTheme(JSON.parse(savedTheme));
+  applyAppearance(localStorage.getItem('notes_appearance')||'black');
   soundEnabled=localStorage.getItem('notes_sound')==='true';
   updateSoundBtn();
   if(!pages.length)createPage(true);else{renderPages();selectPage(pages[0].id)}
@@ -1049,6 +1067,31 @@ function initThemes(){
   ).join('');
 }
 
+function toggleAppearance(){
+  const menu=document.getElementById('appearance-menu');
+  const button=document.getElementById('appearance-btn');
+  const open=menu.classList.toggle('open');
+  button.setAttribute('aria-expanded',String(open));
+  if(open){
+    const rect=button.getBoundingClientRect();
+    menu.style.left=Math.max(8,Math.min(rect.right-152,window.innerWidth-160))+'px';
+    menu.style.top=(rect.bottom+4)+'px';
+  }
+}
+
+function applyAppearance(mode){
+  if(!['black','white','cream'].includes(mode))mode='black';
+  document.documentElement.dataset.appearance=mode;
+  localStorage.setItem('notes_appearance',mode);
+  document.querySelectorAll('.appearance-option').forEach(option=>{
+    const active=option.dataset.appearance===mode;
+    option.classList.toggle('active',active);
+    option.setAttribute('aria-pressed',String(active));
+  });
+  document.getElementById('appearance-menu').classList.remove('open');
+  document.getElementById('appearance-btn').setAttribute('aria-expanded','false');
+}
+
 document.addEventListener('DOMContentLoaded',()=>{
   load();
   initThemes();
@@ -1140,6 +1183,10 @@ document.addEventListener('DOMContentLoaded',()=>{
   document.addEventListener('click',e=>{
     if(!e.target.closest('.export-wrap'))document.getElementById('export-dropdown').classList.remove('open');
     if(!e.target.closest('.theme-wrap'))document.getElementById('theme-dropdown').classList.remove('open');
+    if(!e.target.closest('.appearance-wrap')){
+      document.getElementById('appearance-menu').classList.remove('open');
+      document.getElementById('appearance-btn').setAttribute('aria-expanded','false');
+    }
   });
   setInterval(()=>{
     const el=document.getElementById('note-date');
