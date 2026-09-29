@@ -42,10 +42,15 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
 .toolbar-btn:hover{background:var(--hover);color:var(--text)}
 .toolbar-btn.active{color:var(--accent2)}
 .color-format-wrap{display:flex;align-items:center;gap:0}
-.format-color{width:20px;height:20px;flex:0 0 20px;padding:2px;border:1px solid var(--border);border-radius:50%;background:var(--hover);cursor:pointer}
-.format-color::-webkit-color-swatch-wrapper{padding:0}
-.format-color::-webkit-color-swatch{border:0;border-radius:50%}
-.format-color::-moz-color-swatch{border:0;border-radius:50%}
+.format-color{width:20px;height:20px;flex:0 0 20px;padding:0;border:2px solid var(--border);border-radius:50%;cursor:pointer}
+.color-palette{position:fixed;display:none;z-index:40;width:240px;padding:10px;background:var(--sidebar);border:1px solid var(--border);border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,.25)}
+.color-palette.open{display:block}
+.palette-title{display:block;margin-bottom:8px;color:var(--text);font-size:12px;font-weight:600}
+.palette-grid{display:grid;grid-template-columns:repeat(7,26px);gap:5px}
+.palette-swatch{width:26px;height:26px;border:1px solid rgba(127,127,127,.45);border-radius:4px;cursor:pointer}
+.palette-swatch:hover,.palette-swatch.active{outline:2px solid var(--text);outline-offset:1px}
+.palette-custom{display:flex;align-items:center;justify-content:space-between;margin-top:10px;padding:7px 2px 0;border-top:1px solid var(--border);color:var(--text);font-size:12px;cursor:pointer}
+.palette-custom input{width:28px;height:24px;padding:0;border:0;background:none;cursor:pointer}
 .text-color-icon{font-size:14px;font-weight:700;line-height:1}
 .font-size-wrap{display:flex;align-items:center;gap:0}
 .font-size-small{font-size:10px;line-height:1}
@@ -203,11 +208,11 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
       <button class="toolbar-btn" onclick="execCmd('underline')" title="Underline"><u>U</u></button>
       <div class="color-format-wrap" id="text-color-wrap">
         <button class="toolbar-btn" type="button" onclick="applyTextColor()" title="Color selected text with the current color" aria-label="Color selected text"><span class="text-color-icon">A</span></button>
-        <input class="format-color" id="text-color" type="color" value="#ef4444" title="Choose text color" aria-label="Choose text color" onchange="applyTextColor()">
+        <button class="format-color" id="text-color" type="button" data-color="#ef4444" style="background:#ef4444" onclick="toggleColorPalette('text')" title="Choose text color" aria-label="Choose text color" aria-haspopup="true" aria-expanded="false"></button>
       </div>
       <div class="color-format-wrap" id="highlight-wrap">
         <button class="toolbar-btn" type="button" onclick="applyHighlight()" title="Highlight selected text with the current color" aria-label="Highlight selected text"><svg width="16" height="16" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 11 11 5l2 2-6 6H5v-2Z"/><path d="M10 4l1-1a1 1 0 0 1 1.4 0L14 4.6A1 1 0 0 1 14 6l-1 1"/><path d="M2 15h12"/></svg></button>
-        <input class="format-color" id="highlight-color" type="color" value="#ffe066" title="Choose highlight color" aria-label="Choose highlight color" onchange="applyHighlight()">
+        <button class="format-color" id="highlight-color" type="button" data-color="#ffe066" style="background:#ffe066" onclick="toggleColorPalette('highlight')" title="Choose highlight color" aria-label="Choose highlight color" aria-haspopup="true" aria-expanded="false"></button>
       </div>
       <div class="font-size-wrap" id="font-size-wrap">
         <button class="toolbar-btn" type="button" onclick="adjustFontSize(-2)" title="Decrease selected text size" aria-label="Decrease selected text size"><span class="font-size-small">A−</span></button>
@@ -280,6 +285,11 @@ html,body{height:100%;overflow:hidden;font-family:-apple-system,BlinkMacSystemFo
   </div>
 </div>
 <div id="toast"></div>
+<div class="color-palette" id="color-palette" role="group" aria-label="Choose color">
+  <span class="palette-title" id="palette-title"></span>
+  <div class="palette-grid" id="palette-grid"></div>
+  <label class="palette-custom">Custom color<input id="palette-custom-color" type="color" aria-label="Custom color" onchange="choosePaletteColor(this.value)"></label>
+</div>
 <div id="reading-overlay">
   <button id="reading-exit" onclick="toggleReadingMode()">Esc to exit</button>
   <div class="reading-content" id="reading-content"></div>
@@ -303,6 +313,12 @@ const THEMES=[
   {name:'Orange',accent:'#c2410c',accent2:'#f97316'},
   {name:'Pink',accent:'#be185d',accent2:'#ec4899'},
   {name:'Teal',accent:'#0f766e',accent2:'#14b8a6'}
+];
+const COLOR_PRESETS=[
+  ['White','#ffffff'],['Ivory','#fffaf0'],['Yellow','#fff176'],['Gold','#ffe066'],['Orange','#ff9f43'],['Coral','#ff6b6b'],['Red','#ef4444'],
+  ['Blush','#ffd6e0'],['Pink','#f472b6'],['Magenta','#d946ef'],['Lavender','#c4b5fd'],['Purple','#8b5cf6'],['Indigo','#6366f1'],['Navy','#1e3a8a'],
+  ['Sky','#bae6fd'],['Blue','#3b82f6'],['Cyan','#22d3ee'],['Teal','#14b8a6'],['Mint','#a7f3d0'],['Green','#22c55e'],['Lime','#bef264'],
+  ['Cream','#fef3c7'],['Tan','#d6b38a'],['Brown','#92400e'],['Light gray','#d4d4d8'],['Gray','#71717a'],['Charcoal','#3f3f46'],['Black','#000000']
 ];
 
 function load(){
@@ -491,10 +507,59 @@ function saveFormattedContent(editor){
   captureFormatSelection();
 }
 
+let paletteMode=null;
+function initColorPalette(){
+  document.getElementById('palette-grid').innerHTML=COLOR_PRESETS.map(([name,color])=>
+    `<button class="palette-swatch" type="button" data-color="${color}" style="background:${color}" title="${name}" aria-label="${name}" onclick="choosePaletteColor('${color}')"></button>`
+  ).join('');
+}
+
+function closeColorPalette(){
+  document.getElementById('color-palette').classList.remove('open');
+  ['text-color','highlight-color'].forEach(id=>document.getElementById(id).setAttribute('aria-expanded','false'));
+}
+
+function toggleColorPalette(mode){
+  const menu=document.getElementById('color-palette');
+  if(menu.classList.contains('open')){
+    const sameMode=paletteMode===mode;
+    closeColorPalette();
+    if(sameMode)return;
+  }
+  captureFormatSelection();
+  paletteMode=mode;
+  const trigger=document.getElementById(mode==='text'?'text-color':'highlight-color');
+  const current=trigger.dataset.color;
+  document.getElementById('palette-title').textContent=mode==='text'?'Text color':'Highlight color';
+  document.getElementById('palette-custom-color').value=current;
+  document.querySelectorAll('.palette-swatch').forEach(button=>{
+    const active=button.dataset.color===current;
+    button.classList.toggle('active',active);
+    button.setAttribute('aria-pressed',String(active));
+  });
+  const rect=trigger.getBoundingClientRect();
+  menu.style.left=Math.max(8,Math.min(rect.left,window.innerWidth-248))+'px';
+  menu.style.top=(rect.bottom+6)+'px';
+  menu.classList.add('open');
+  trigger.setAttribute('aria-expanded','true');
+}
+
+function choosePaletteColor(color){
+  if(!/^#[0-9a-f]{6}$/i.test(color)||!paletteMode)return;
+  const mode=paletteMode;
+  const trigger=document.getElementById(mode==='text'?'text-color':'highlight-color');
+  trigger.dataset.color=color;
+  trigger.style.backgroundColor=color;
+  closeColorPalette();
+  if(mode==='text')applyTextColor();
+  else applyHighlight();
+}
+
 function applySelectionColor(command,colorInputId){
+  closeColorPalette();
   const editor=restoreFormatSelection();
   if(!editor)return;
-  const color=document.getElementById(colorInputId).value;
+  const color=document.getElementById(colorInputId).dataset.color;
   document.execCommand('styleWithCSS',false,true);
   document.execCommand(command,false,color);
   document.execCommand('styleWithCSS',false,false);
@@ -502,7 +567,24 @@ function applySelectionColor(command,colorInputId){
 }
 
 function applyTextColor(){applySelectionColor('foreColor','text-color')}
-function applyHighlight(){applySelectionColor('hiliteColor','highlight-color')}
+function contrastTextColor(hex){
+  const channels=[1,3,5].map(i=>parseInt(hex.slice(i,i+2),16)/255);
+  const luminance=channels.map(c=>c<=0.04045?c/12.92:((c+0.055)/1.055)**2.4)
+    .reduce((sum,c,i)=>sum+c*[0.2126,0.7152,0.0722][i],0);
+  return luminance>0.179?'#000000':'#ffffff';
+}
+
+function applyHighlight(){
+  closeColorPalette();
+  const editor=restoreFormatSelection();
+  if(!editor)return;
+  const color=document.getElementById('highlight-color').dataset.color;
+  document.execCommand('styleWithCSS',false,true);
+  document.execCommand('hiliteColor',false,color);
+  document.execCommand('foreColor',false,contrastTextColor(color));
+  document.execCommand('styleWithCSS',false,false);
+  saveFormattedContent(editor);
+}
 
 function adjustFontSize(change){
   const editor=restoreFormatSelection();
@@ -1095,6 +1177,7 @@ function applyAppearance(mode){
 document.addEventListener('DOMContentLoaded',()=>{
   load();
   initThemes();
+  initColorPalette();
   document.querySelectorAll('.color-format-wrap').forEach(wrap=>wrap.addEventListener('pointerdown',captureFormatSelection));
   document.getElementById('font-size-wrap').addEventListener('pointerdown',captureFormatSelection);
   document.addEventListener('selectionchange',()=>{
@@ -1171,6 +1254,7 @@ document.addEventListener('DOMContentLoaded',()=>{
     if((e.ctrlKey||e.metaKey)&&e.key==='n'){e.preventDefault();createPage()}
     if((e.ctrlKey||e.metaKey)&&e.key==='\\'){e.preventDefault();toggleSplit()}
     if(e.key==='Escape'){
+      closeColorPalette();
       const ro=document.getElementById('reading-overlay');
       if(ro.classList.contains('open'))toggleReadingMode();
     }
@@ -1181,6 +1265,7 @@ document.addEventListener('DOMContentLoaded',()=>{
   window.addEventListener('scroll',positionOverlay,true);
   window.addEventListener('resize',positionOverlay);
   document.addEventListener('click',e=>{
+    if(!e.target.closest('.color-format-wrap')&&!e.target.closest('#color-palette'))closeColorPalette();
     if(!e.target.closest('.export-wrap'))document.getElementById('export-dropdown').classList.remove('open');
     if(!e.target.closest('.theme-wrap'))document.getElementById('theme-dropdown').classList.remove('open');
     if(!e.target.closest('.appearance-wrap')){
